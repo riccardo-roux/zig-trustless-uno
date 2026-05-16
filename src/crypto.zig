@@ -88,6 +88,8 @@ pub const RawPubkey = extern struct {
 
     const Self = @This();
 
+    pub const LENGTH = @sizeOf(Self);
+
     pub fn hash(self: *const Self) [32]u8 {
         return hash_256(@ptrCast(self));
     }
@@ -96,5 +98,20 @@ pub const RawPubkey = extern struct {
         if (!std.mem.eql(u8, &self.hash(), &hash_to_verify)) {
             return error.MismatchingPubkeyHash;
         }
+    }
+
+    pub fn to_bytes(self: Self) [@sizeOf(Self)]u8 {
+        return @as(*const [@sizeOf(Self)]u8, @ptrCast(&self)).*;
+    }
+
+    pub fn as_bytes_mut(self: *Self) *[@sizeOf(Self)]u8 {
+        return @ptrCast(self);
+    }
+
+    pub fn parse(self: Self) !Pubkey {
+        return .{
+            .mldsa = try .fromBytes(self.mldsa),
+            .kyber = try .fromBytes(&self.kyber),
+        };
     }
 };

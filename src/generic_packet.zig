@@ -22,6 +22,16 @@ pub fn GenericPacket(comptime Child: type) type {
             };
         }
 
+        pub fn verify_signature_and_get_content(self: *const Self, full_pubkey: *const crypto.Pubkey) !Child {
+            if (!std.mem.eql(u8, &self.author_id, &full_pubkey.raw().hash())) return error.PubkeyMismatch;
+
+            const parsed_sig = try crypto.MLDSA87.Signature.fromBytes(self.signature);
+
+            try parsed_sig.verify(@ptrCast(&self.content), full_pubkey.mldsa);
+
+            return self.content;
+        }
+
         pub fn encrypt(self: *const Self, nonce: [crypto.XChaCha20Poly1305.NONCE_LEN]u8, key: [32]u8) EncryptedPacket {
             return EncryptedPacket.encrypt(@ptrCast(self), nonce, key);
         }

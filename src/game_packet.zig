@@ -6,6 +6,10 @@ pub const GamePacketData = extern struct {
     kind: Kind,
     data: Data,
 
-    pub const Kind = enum(u8) {};
-    pub const Data = extern union {};
+    pub const Kind = enum(u8) {
+        placeholder,
+    };
+    pub const Data = extern union {
+        placeholder: void,
+    };
 };
