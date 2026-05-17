@@ -35,7 +35,7 @@ pub const Packet = extern struct {
         }
     };
 
-    pub fn as_bytes(self: Self) [@sizeOf(Self)]u8 {
+    pub fn to_bytes(self: Self) [@sizeOf(Self)]u8 {
         return Self.as_bytes_ptr(&self).*;
     }
 

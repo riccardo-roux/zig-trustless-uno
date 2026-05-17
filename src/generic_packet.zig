@@ -12,22 +12,22 @@ pub fn GenericPacket(comptime Child: type) type {
 
         const Self = @This();
 
-        pub const EncryptedPacket = crypto.XChaCha20Poly1305.Ciphertext(@sizeOf(Self));
+        pub const EncryptedPacket = crypto.XChaCha20Poly1305.Ciphertext(Self);
 
-        pub fn init_and_sign(keypair: *const crypto.KeyPair, content: *const Child) !Self {
+        pub fn init_and_sign(keypair: *const crypto.MLDSA87.KeyPair, my_id: [32]u8, content: *const Child) !Self {
             return .{
-                .author_id = keypair.pubkey().raw().hash(),
-                .signature = (try keypair.mldsa.sign(@ptrCast(content), null)).toBytes(),
+                .author_id = my_id,
+                .signature = (try keypair.sign(@ptrCast(content), null)).toBytes(),
                 .content = content.*,
             };
         }
 
-        pub fn verify_signature_and_get_content(self: *const Self, full_pubkey: *const crypto.Pubkey) !Child {
-            if (!std.mem.eql(u8, &self.author_id, &full_pubkey.raw().hash())) return error.PubkeyMismatch;
+        pub fn verify_signature_and_get_content(self: *const Self, full_mldsa_pubkey: *const crypto.MLDSA87.PublicKey, full_pubkey_hash: [32]u8) !Child {
+            if (!std.mem.eql(u8, &self.author_id, &full_pubkey_hash)) return error.PubkeyMismatch;
 
             const parsed_sig = try crypto.MLDSA87.Signature.fromBytes(self.signature);
 
-            try parsed_sig.verify(@ptrCast(&self.content), full_pubkey.mldsa);
+            try parsed_sig.verify(@ptrCast(&self.content), full_mldsa_pubkey.*);
 
             return self.content;
         }

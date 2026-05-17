@@ -28,7 +28,7 @@ pub const CreateGamePacket = extern struct {
         var nonce: [crypto.XChaCha20Poly1305.NONCE_LEN]u8 = undefined;
         random.bytes(&nonce);
 
-        const unencrypted: GenericPacket([32]u8) = try .init_and_sign(keypair, &random_key);
+        const unencrypted: GenericPacket([32]u8) = try .init_and_sign(&keypair.mldsa, keypair.pubkey().raw().hash(), &random_key);
 
         self.signed_then_encrypted_secret_key = .encrypt(@ptrCast(&unencrypted), nonce, kyber_ciphertext.shared_secret);
 

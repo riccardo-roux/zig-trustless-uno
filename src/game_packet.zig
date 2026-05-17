@@ -7,9 +7,12 @@ pub const GamePacketData = extern struct {
     data: Data,
 
     pub const Kind = enum(u8) {
-        placeholder,
+        ping,
+        pong,
     };
+
     pub const Data = extern union {
-        placeholder: void,
+        ping: void,
+        pong: void,
     };
 };

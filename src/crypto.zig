@@ -10,7 +10,18 @@ pub const XChaCha20Poly1305 = struct {
     pub const TAG_LEN = XChaCha20Poly1305Inner.tag_length;
     pub const DATA_LEN = NONCE_LEN + TAG_LEN;
 
-    pub fn Ciphertext(comptime size: usize) type {
+    pub fn random_nonce(io: std.Io) [NONCE_LEN]u8 {
+        var nonce: [NONCE_LEN]u8 = undefined;
+        var random_io = std.Random.IoSource{ .io = io };
+
+        random_io.interface().bytes(&nonce);
+
+        return nonce;
+    }
+
+    pub fn Ciphertext(comptime Child: type) type {
+        const size = @sizeOf(Child);
+
         return extern struct {
             nonce: [NONCE_LEN]u8,
             tag: [TAG_LEN]u8,
@@ -18,22 +29,22 @@ pub const XChaCha20Poly1305 = struct {
 
             const Self = @This();
 
-            pub fn encrypt(data: *const [size]u8, nonce: [NONCE_LEN]u8, key: [32]u8) Self {
+            pub fn encrypt(data: *const Child, nonce: [NONCE_LEN]u8, key: [32]u8) Self {
                 var self = Self{
                     .nonce = nonce,
                     .tag = undefined,
                     .encrypted_data = undefined,
                 };
 
-                XChaCha20Poly1305Inner.encrypt(&self.encrypted_data, &self.tag, data, "", nonce, key);
+                XChaCha20Poly1305Inner.encrypt(&self.encrypted_data, &self.tag, @ptrCast(data), "", nonce, key);
 
                 return self;
             }
 
-            pub fn decrypt(self: *const Self, key: [32]u8) ![size]u8 {
-                var out: [size]u8 = undefined;
+            pub fn decrypt(self: *const Self, key: [32]u8) !Child {
+                var out: Child = undefined;
 
-                try XChaCha20Poly1305Inner.decrypt(&out, &self.encrypted_data, self.tag, "", self.nonce, key);
+                try XChaCha20Poly1305Inner.decrypt(@ptrCast(&out), &self.encrypted_data, self.tag, "", self.nonce, key);
 
                 return out;
             }
