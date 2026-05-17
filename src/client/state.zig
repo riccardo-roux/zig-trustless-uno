@@ -3,6 +3,7 @@ sk: [32]u8,
 my_keypair: crypto.MLDSA87.KeyPair,
 my_id: [32]u8,
 other_mldsa_pubkey: crypto.MLDSA87.PublicKey,
+known_nonces: *crypto.XChaCha20Poly1305.KNOWN_NONCES_TYPE,
 
 const std = @import("std");
 const crypto = @import("../crypto.zig");
@@ -72,7 +73,7 @@ pub fn receive_any_game_packet(self: Self, reader: *std.Io.Reader) !game_packet_
 
     const data = packet.data.ReceiveGamePacket;
 
-    const decrypted_packet = try data.decrypt(self.sk);
+    const decrypted_packet = try data.decrypt(self.sk, self.known_nonces);
 
     const sig_verified_packet = try decrypted_packet.verify_signature_and_get_content(&self.other_mldsa_pubkey, self.target_id);
 

@@ -9,10 +9,14 @@ pub const GamePacketData = extern struct {
     pub const Kind = enum(u8) {
         ping,
         pong,
+        commit,
+        reveal,
     };
 
     pub const Data = extern union {
         ping: void,
         pong: void,
+        commit: [32]u8,
+        reveal: [32]u8,
     };
 };

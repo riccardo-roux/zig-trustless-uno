@@ -24,7 +24,7 @@ pub fn handle_server_connection(allocator: std.mem.Allocator, io: std.Io, args: 
     return try parsed_hostname.connect(io, port, .{ .mode = .stream, .protocol = .tcp });
 }
 
-pub fn handle_client_to_client_handshake(io: std.Io, writer: *std.Io.Writer, reader: *std.Io.Reader) !State {
+pub fn handle_client_to_client_handshake(io: std.Io, writer: *std.Io.Writer, reader: *std.Io.Reader, known_nonces: *crypto.XChaCha20Poly1305.KNOWN_NONCES_TYPE) !State {
     const keypair = crypto.KeyPair.init_random(io);
     const my_raw_pubkey = keypair.pubkey().raw();
     const my_hex_pubkey = std.fmt.bytesToHex(&my_raw_pubkey.hash(), .lower);
@@ -73,6 +73,7 @@ pub fn handle_client_to_client_handshake(io: std.Io, writer: *std.Io.Writer, rea
                 .other_mldsa_pubkey = other_pubkey.mldsa,
                 .my_keypair = keypair.mldsa,
                 .my_id = my_raw_pubkey.hash(),
+                .known_nonces = known_nonces,
             };
 
             try state.wait_ping_and_send_pong(io, reader, writer);
@@ -89,7 +90,7 @@ pub fn handle_client_to_client_handshake(io: std.Io, writer: *std.Io.Writer, rea
                     .ReceiveCreateGame => {
                         const packet_data = &packet.data.ReceiveCreateGame;
 
-                        const decrypted = try packet_data.decrypt(&keypair);
+                        const decrypted = try packet_data.decrypt(&keypair, known_nonces);
 
                         while (true) {
                             std.debug.print("Player {s} wants to play with you, accept (y/n) ? ", .{std.fmt.bytesToHex(&decrypted.author_id, .lower)});
@@ -116,6 +117,7 @@ pub fn handle_client_to_client_handshake(io: std.Io, writer: *std.Io.Writer, rea
                             .other_mldsa_pubkey = parsed_full_pubkey.mldsa,
                             .my_keypair = keypair.mldsa,
                             .my_id = my_raw_pubkey.hash(),
+                            .known_nonces = known_nonces,
                         };
 
                         try state.send_ping_and_wait_pong(io, reader, writer);

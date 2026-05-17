@@ -35,9 +35,9 @@ pub const CreateGamePacket = extern struct {
         return .{ .secret_key = random_key, .self = self };
     }
 
-    pub fn decrypt(self: Self, keypair: *const crypto.KeyPair) !GenericPacket([32]u8) {
+    pub fn decrypt(self: Self, keypair: *const crypto.KeyPair, known_nonces: *crypto.XChaCha20Poly1305.KNOWN_NONCES_TYPE) !GenericPacket([32]u8) {
         const kyber_key = try keypair.kyber.secret_key.decaps(&self.kyber_ciphertext);
-        const decrypted = try self.signed_then_encrypted_secret_key.decrypt(kyber_key);
+        const decrypted = try self.signed_then_encrypted_secret_key.decrypt(kyber_key, known_nonces);
 
         const decrypted_parsed: *const GenericPacket([32]u8) = @ptrCast(&decrypted);
 

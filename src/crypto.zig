@@ -9,6 +9,7 @@ pub const XChaCha20Poly1305 = struct {
     pub const NONCE_LEN = XChaCha20Poly1305Inner.nonce_length;
     pub const TAG_LEN = XChaCha20Poly1305Inner.tag_length;
     pub const DATA_LEN = NONCE_LEN + TAG_LEN;
+    pub const KNOWN_NONCES_TYPE = std.AutoHashMap([NONCE_LEN]u8, void);
 
     pub fn random_nonce(io: std.Io) [NONCE_LEN]u8 {
         var nonce: [NONCE_LEN]u8 = undefined;
@@ -41,10 +42,14 @@ pub const XChaCha20Poly1305 = struct {
                 return self;
             }
 
-            pub fn decrypt(self: *const Self, key: [32]u8) !Child {
+            pub fn decrypt(self: *const Self, key: [32]u8, known_nonces: *KNOWN_NONCES_TYPE) !Child {
                 var out: Child = undefined;
 
+                if (known_nonces.contains(self.nonce)) return error.AlreadyKnownNonce;
+
                 try XChaCha20Poly1305Inner.decrypt(@ptrCast(&out), &self.encrypted_data, self.tag, "", self.nonce, key);
+
+                try known_nonces.put(self.nonce, {});
 
                 return out;
             }
