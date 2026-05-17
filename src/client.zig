@@ -8,7 +8,6 @@ const game_packet_mod = @import("game_packet.zig");
 const create_game_packet_mod = @import("create_game_packet.zig");
 
 pub fn main(init: std.process.Init) !void {
-    // var writer_buffer: [1024]u8 = undefined;
     var reader_buffer: [1024]u8 = undefined;
 
     var server_conn = blk: {
@@ -42,18 +41,22 @@ pub fn main(init: std.process.Init) !void {
 
     // const other_pubkey = undefined;
     {
-        std.debug.print("Either :\n1) Press enter to join the game of another player\n2) Enter the hex pubkey hash of the other player to create a game\n\n", .{});
+        std.debug.print("Either :\n1) Press enter to join the game of another player\n2) Enter the hex pubkey hash of the other player to create a game\n\nAction : ", .{});
 
         const line = try stdin.read_empty_or_fixed(32 * 2, init.io);
 
-        if (line) |hex_pubkey| {
-            var raw_pubkey: [@divExact(hex_pubkey.len, 2)]u8 = undefined;
+        if (line) |hex_target_pubkey_hash| {
+            var raw_target_pubkey_hash: [@divExact(hex_target_pubkey_hash.len, 2)]u8 = undefined;
 
-            _ = try std.fmt.hexToBytes(&raw_pubkey, &hex_pubkey);
+            _ = try std.fmt.hexToBytes(&raw_target_pubkey_hash, &hex_target_pubkey_hash);
 
-            const other_pubkey_raw = try get_player_full_pubkey(&raw_pubkey, &conn_writer.interface, &conn_reader.interface);
-            const other_pubkey = try other_pubkey_raw.parse();
-            const other_pubkey_hash = other_pubkey_raw.hash();
+            const other_pubkey = blk: {
+                const other_pubkey_raw = try get_player_full_pubkey(&raw_target_pubkey_hash, &conn_writer.interface, &conn_reader.interface);
+                try other_pubkey_raw.verify(raw_target_pubkey_hash);
+                break :blk try other_pubkey_raw.parse();
+            };
+
+            std.log.debug("Other pubkey validated", .{});
 
             const packet_content = try create_game_packet_mod.CreateGamePacket.init_random(init.io, &keypair, &other_pubkey);
 
@@ -61,7 +64,7 @@ pub fn main(init: std.process.Init) !void {
                 .kind = .SendCreateGame,
                 .data = .{
                     .SendCreateGame = .{
-                        .target = other_pubkey_hash,
+                        .target = raw_target_pubkey_hash,
                         .child = packet_content.self,
                     },
                 },
@@ -142,8 +145,12 @@ fn get_player_full_pubkey(raw_pubkey: *const [32]u8, writer: *std.Io.Writer, rea
 
     try reader.readSliceAll(@ptrCast(&res));
 
-    return switch (res.kind) {
-        .Pubkey => res.data.Pubkey,
-        else => error.InvalidServerResponse,
-    };
+    switch (res.kind) {
+        .Pubkey => {
+            const pubkey = &res.data.Pubkey;
+            try pubkey.verify(raw_pubkey.*);
+            return pubkey.*;
+        },
+        else => return error.InvalidServerResponse,
+    }
 }

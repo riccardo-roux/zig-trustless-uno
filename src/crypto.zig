@@ -108,6 +108,18 @@ pub const RawPubkey = extern struct {
         return @ptrCast(self);
     }
 
+    pub fn as_bytes(self: *const Self) *const [@sizeOf(Self)]u8 {
+        return @ptrCast(self);
+    }
+
+    pub fn from_bytes_ptr(bytes: *const [@sizeOf(Self)]u8) *const Self {
+        return @ptrCast(bytes);
+    }
+
+    pub fn from_bytes(bytes: *const [@sizeOf(Self)]u8) Self {
+        return Self.from_bytes_ptr(bytes).*;
+    }
+
     pub fn parse(self: Self) !Pubkey {
         return .{
             .mldsa = try .fromBytes(self.mldsa),
