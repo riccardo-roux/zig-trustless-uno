@@ -63,6 +63,18 @@ pub fn hash_256(input: []const u8) [32]u8 {
     return out;
 }
 
+pub fn xor(comptime N: usize, a: [N]u8, b: [N]u8) [N]u8 {
+    var out: [N]u8 = undefined;
+    for (&out, a, b) |*out_b, a_b, b_b| {
+        out_b.* = a_b ^ b_b;
+    }
+    return out;
+}
+
+pub fn xor_256(a: [32]u8, b: [32]u8) [32]u8 {
+    return xor(32, a, b);
+}
+
 pub const KeyPair = struct {
     mldsa: MLDSA87.KeyPair,
     kyber: Kyber1024.KeyPair,

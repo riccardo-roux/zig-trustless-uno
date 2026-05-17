@@ -1,0 +1,1 @@
+pub const GAME_START_CARDS_COUNT = 7;

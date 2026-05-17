@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const stdin = @import("../stdin.zig");
+
 pub const Card = union(enum) {
     Number: struct {
         color: CardColor,
@@ -8,14 +10,24 @@ pub const Card = union(enum) {
     Skip: CardColor,
     Reverse: CardColor,
     DrawTwo: CardColor,
-    Wild: void,
-    WildDrawFour: void,
+    Wild: ?CardColor,
+    WildDrawFour: ?CardColor,
 
     pub const CardColor = enum(u8) {
         red,
         blue,
         green,
         yellow,
+
+        pub fn parse_char(c: u8) ?CardColor {
+            switch (c) {
+                'r' => return .red,
+                'b' => return .blue,
+                'g' => return .green,
+                'y' => return .yellow,
+                else => return null,
+            }
+        }
     };
 
     pub const CardNumber = enum(u8) {
@@ -30,6 +42,13 @@ pub const Card = union(enum) {
         eight,
         nine,
     };
+
+    pub fn is_number(self: Card) bool {
+        switch (self) {
+            .Number => return true,
+            .Skip, .Reverse, .DrawTwo, .Wild, .WildDrawFour => return false,
+        }
+    }
 
     pub fn generateWholeDeck() [112]Card {
         var cards: [112]Card = undefined;
@@ -76,14 +95,14 @@ pub const Card = union(enum) {
 
         inline for (0..8) |_| {
             cards[index] = Card{
-                .Wild = {},
+                .Wild = null,
             };
             index += 1;
         }
 
         inline for (0..4) |_| {
             cards[index] = Card{
-                .WildDrawFour = {},
+                .WildDrawFour = null,
             };
             index += 1;
         }
@@ -91,5 +110,94 @@ pub const Card = union(enum) {
         if (index != cards.len) @compileError("Deck size mismatch");
 
         return cards;
+    }
+
+    pub fn get_color(self: Card) ?CardColor {
+        switch (self) {
+            .Number => |nb| return nb.color,
+            .Skip => |skip| return skip,
+            .Reverse => |rev| return rev,
+            .DrawTwo => |dt| return dt,
+            .Wild, .WildDrawFour => |value| return value,
+        }
+    }
+
+    ///MUST NOT be used in a real game, because all cards have a color (either by itself, or chosen by the one that plays it)
+    pub fn is_same_color(a: Card, b: Card) bool {
+        if (a.get_color()) |a_color| {
+            if (b.get_color()) |b_color| {
+                return a_color == b_color;
+            }
+        }
+
+        return true; //if any of them has no color
+    }
+
+    ///MUST be used in a real game, because all cards have a color (either by itself, or chosen by the one that plays it)
+    pub fn is_same_color_no_null(a: Card, b: Card) !bool {
+        if (a.get_color()) |a_color| {
+            if (b.get_color()) |b_color| {
+                return a_color == b_color;
+            }
+        }
+
+        return error.NullCard; //if any of them has no color
+    }
+
+    pub fn is_same_value_colorless(a: Card, b: Card) bool {
+        switch (a) {
+            .Number => {
+                switch (b) {
+                    .Number => return a.Number.number == b.Number.number,
+                    else => return false,
+                }
+            },
+            .Skip => {
+                switch (b) {
+                    .Skip => return true,
+                    else => return false,
+                }
+            },
+            .Reverse => {
+                switch (b) {
+                    .Reverse => return true,
+                    else => return false,
+                }
+            },
+            .DrawTwo => {
+                switch (b) {
+                    .DrawTwo => return true,
+                    else => return false,
+                }
+            },
+            .Wild => {
+                switch (b) {
+                    .Wild => return true,
+                    else => return false,
+                }
+            },
+            .WildDrawFour => {
+                switch (b) {
+                    .WildDrawFour => return true,
+                    else => return false,
+                }
+            },
+        }
+    }
+
+    pub fn is_playable(self: Card, last_card_played: Card) bool {
+        return (self.is_same_color(last_card_played)) or self.is_same_value_colorless(last_card_played);
+    }
+
+    pub fn ask_choose_color_if_needed(self: Card, io: std.Io) !?CardColor {
+        switch (self) {
+            .Wild, .WildDrawFour => while (true) {
+                std.debug.print("Choose color (r/b/g/y) : ", .{});
+                const color_char = try stdin.read_char(io);
+                const color = CardColor.parse_char(color_char) orelse continue;
+                return color;
+            },
+            else => return null,
+        }
     }
 };
