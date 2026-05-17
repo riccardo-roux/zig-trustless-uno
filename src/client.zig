@@ -73,6 +73,8 @@ pub fn main(init: std.process.Init) !void {
             try conn_writer.interface.writeAll(packet.as_bytes_ptr());
 
             std.debug.print("sent random key = {s}\n", .{std.fmt.bytesToHex(&packet_content.secret_key, .lower)});
+
+            try stdin.read_empty(init.io);
         } else {
             var packet: packet_mod.Packet = undefined;
 

@@ -8,11 +8,11 @@ const Mutex = @import("mutex.zig").Mutex;
 
 pub const User = struct {
     full_pubkey: crypto.RawPubkey,
-    writer: *std.Io.Writer,
-    reader: *std.Io.Reader,
+    writer: *Mutex(*std.Io.Writer),
+    reader: *Mutex(*std.Io.Reader),
 };
 
-var users: Mutex(std.AutoHashMap([32]u8, *Mutex(User))) = undefined;
+var users: Mutex(std.AutoHashMap([32]u8, User)) = undefined;
 
 pub fn main(init: std.process.Init) !void {
     users = .init(.init(init.gpa));
@@ -44,28 +44,28 @@ pub fn handle_conn(io: std.Io, conn: std.Io.net.Stream) !void {
     var io_reader = conn.reader(io, &r_buffer);
     var io_writer = conn.writer(io, &.{});
 
-    var user = Mutex(User).init(.{
+    var reader = Mutex(*std.Io.Reader).init(&io_reader.interface);
+    var writer = Mutex(*std.Io.Writer).init(&io_writer.interface);
+
+    var user = User{
         .full_pubkey = undefined,
-        .reader = &io_reader.interface,
-        .writer = &io_writer.interface,
-    });
+        .reader = &reader,
+        .writer = &writer,
+    };
 
     {
-        const reader = user.data.reader;
-        const writer = user.data.writer;
-
         //handshake
-        try perform_handshake(reader, writer, &user.data.full_pubkey, random);
+        try perform_handshake(reader.data, writer.data, &user.full_pubkey, random);
     }
 
-    const pubkey_hash = crypto.hash_256(user.data.full_pubkey.as_bytes());
+    const pubkey_hash = crypto.hash_256(user.full_pubkey.as_bytes());
 
     //TODO handle "already connected" case
     {
         var users_guard = users.lock(io);
         defer users_guard.unlock(io);
 
-        try users_guard.data_ptr.put(pubkey_hash, &user);
+        try users_guard.data_ptr.put(pubkey_hash, user);
     }
     defer {
         var users_guard = users.lock(io);
@@ -78,10 +78,10 @@ pub fn handle_conn(io: std.Io, conn: std.Io.net.Stream) !void {
 
     while (true) {
         {
-            var user_guard = user.lock(io);
-            defer user_guard.unlock(io);
+            var reader_guard = reader.lock(io);
+            defer reader_guard.unlock(io);
 
-            user_guard.data_ptr.reader.readSliceAll(@ptrCast(&packet)) catch break;
+            reader_guard.data_ptr.*.readSliceAll(@ptrCast(&packet)) catch break;
         }
 
         std.log.debug("Received packet kind {}", .{packet.kind});
@@ -101,10 +101,7 @@ pub fn handle_conn(io: std.Io, conn: std.Io.net.Stream) !void {
                     std.log.debug("Got user from hashed pubkey", .{});
 
                     {
-                        var got_user_guard = got_user.lock(io);
-                        defer got_user_guard.unlock(io);
-
-                        break :blk got_user_guard.data_ptr.full_pubkey;
+                        break :blk got_user.full_pubkey;
                     }
                 };
 
@@ -113,10 +110,10 @@ pub fn handle_conn(io: std.Io, conn: std.Io.net.Stream) !void {
                 packet = .{ .kind = .Pubkey, .data = .{ .Pubkey = got_full_pubkey } };
 
                 {
-                    var user_guard = user.lock(io);
-                    defer user_guard.unlock(io);
+                    var writer_guard = user.writer.lock(io);
+                    defer writer_guard.unlock(io);
 
-                    try user_guard.data_ptr.writer.writeAll(packet.as_bytes_ptr());
+                    try writer_guard.data_ptr.*.writeAll(packet.as_bytes_ptr());
 
                     std.log.debug("Full pubkey sent", .{});
                 }
@@ -185,8 +182,8 @@ pub fn write_to_user(io: std.Io, target_hash: [32]u8, data: *const packet_mod.Pa
         };
     };
 
-    var target_user_guard = target_user.lock(io);
-    defer target_user_guard.unlock(io);
+    var target_user_writer_guard = target_user.writer.lock(io);
+    defer target_user_writer_guard.unlock(io);
 
-    try target_user_guard.data_ptr.writer.writeAll(@ptrCast(data));
+    try target_user_writer_guard.data_ptr.*.writeAll(@ptrCast(data));
 }

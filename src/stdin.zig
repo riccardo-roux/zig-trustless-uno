@@ -27,15 +27,26 @@ pub fn read_empty_or_fixed(comptime N: usize, io: std.Io) !?[N]u8 {
 
     const slice = try read_line_buffer(io, &buffer);
 
-    return switch (slice.len) {
-        0 => null,
-        N => buffer[0..N].*,
-        else => error.WrongSize,
-    };
+    if (N == 0) {
+        return switch (slice.len) {
+            0 => null,
+            else => error.WrongSize,
+        };
+    } else {
+        return switch (slice.len) {
+            0 => null,
+            N => buffer[0..N].*,
+            else => error.WrongSize,
+        };
+    }
 }
 
 pub fn read_fixed(comptime N: usize, io: std.Io) ![N]u8 {
     return (try read_empty_or_fixed(N, io)) orelse return error.EmptyStdin;
+}
+
+pub fn read_empty(io: std.Io) !void {
+    _ = try read_empty_or_fixed(0, io);
 }
 
 pub fn read_char(io: std.Io) !u8 {
