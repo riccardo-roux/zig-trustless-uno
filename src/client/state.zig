@@ -56,25 +56,25 @@ fn send_empty_game_packet(self: Self, io: std.Io, kind: game_packet_mod.GamePack
 }
 
 pub fn wait_ping_and_send_pong(self: Self, io: std.Io, reader: *std.Io.Reader, writer: *std.Io.Writer) !void {
-    std.log.debug("Waiting for ping...", .{});
+    std.log.info("Waiting for ping...", .{});
 
     try self.receive_empty_packet(.ping, reader);
 
-    std.log.debug("Ping received", .{});
+    std.log.info("Ping received", .{});
 
     try self.send_empty_game_packet(io, .pong, writer);
 
-    std.log.debug("Pong sent", .{});
+    std.log.info("Pong sent", .{});
 }
 
 pub fn send_ping_and_wait_pong(self: Self, io: std.Io, reader: *std.Io.Reader, writer: *std.Io.Writer) !void {
     try self.send_empty_game_packet(io, .ping, writer);
 
-    std.log.debug("Ping sent, waiting for pong...", .{});
+    std.log.info("Ping sent, waiting for pong...", .{});
 
     try self.receive_empty_packet(.pong, reader);
 
-    std.log.debug("Pong received !", .{});
+    std.log.info("Pong received !", .{});
 }
 
 pub fn receive_any_game_packet(self: Self, reader: *std.Io.Reader) !game_packet_mod.GamePacketData {
@@ -371,7 +371,6 @@ pub fn play_card(self: *Self, is_my_turn: *bool, card_index: usize, io: std.Io, 
 }
 
 pub fn deinit(self: *Self) void {
-    self.known_nonces.deinit();
     self.my_hand.deinit(self.allocator);
     self.other_hand.deinit();
 }

@@ -8,12 +8,3 @@ pub fn getCardFromSeed(seed: [32]u8) Card {
     const index: usize = @intCast(seed_as_number % DECK_CARDS.len);
     return DECK_CARDS[index];
 }
-
-test "Display deck cards" {
-    const final_json = try std.json.Stringify.valueAlloc(std.testing.allocator, DECK_CARDS, .{
-        .whitespace = .indent_4,
-    });
-    defer std.testing.allocator.free(final_json);
-
-    std.debug.print("{s}\n", .{final_json});
-}

@@ -15,13 +15,13 @@ pub fn main(init: std.process.Init) !void {
 
     var reader_buffer: [1024]u8 = undefined;
 
-    var server_conn = try cli.handle_server_connection(init.gpa, init.io, init.minimal.args);
+    var server_conn = try cli.connect_to_server(init.gpa, init.io, init.minimal.args);
     defer server_conn.close(init.io);
 
     var conn_writer = server_conn.writer(init.io, &.{});
     var conn_reader = server_conn.reader(init.io, &reader_buffer);
 
-    var state = try cli.handle_client_to_client_handshake(init.io, &conn_writer.interface, &conn_reader.interface, &known_decrypted_nonces, init.gpa);
+    var state = try cli.handle_handshakes(init.io, &conn_writer.interface, &conn_reader.interface, &known_decrypted_nonces, init.gpa);
     defer state.deinit();
 
     try state.generate_first_card(init.io, &conn_reader.interface, &conn_writer.interface);

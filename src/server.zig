@@ -5,6 +5,7 @@ const crypto = @import("crypto.zig");
 const packet_mod = @import("packet.zig");
 const net = @import("server/net.zig");
 const Mutex = @import("mutex.zig").Mutex;
+const Status = @import("server/status.zig").Status;
 
 pub const User = struct {
     full_pubkey: crypto.RawPubkey,
@@ -84,7 +85,7 @@ pub fn handle_conn(io: std.Io, conn: std.Io.net.Stream) !void {
             reader_guard.data_ptr.*.readSliceAll(@ptrCast(&packet)) catch break;
         }
 
-        std.log.debug("Received packet kind {}", .{packet.kind});
+        std.log.info("Received packet kind {}", .{packet.kind});
 
         switch (packet.kind) {
             .GetPubkey => {
@@ -98,14 +99,14 @@ pub fn handle_conn(io: std.Io, conn: std.Io.net.Stream) !void {
 
                     const got_user = (users_guard.data_ptr.get(hashed_pubkey) orelse return error.PubkeyHashNotConnected);
 
-                    std.log.debug("Got user from hashed pubkey", .{});
+                    std.log.info("Got user from hashed pubkey", .{});
 
                     {
                         break :blk got_user.full_pubkey;
                     }
                 };
 
-                std.log.debug("Got full pubkey", .{});
+                std.log.info("Got full pubkey", .{});
 
                 packet = .{ .kind = .Pubkey, .data = .{ .Pubkey = got_full_pubkey } };
 
@@ -115,7 +116,7 @@ pub fn handle_conn(io: std.Io, conn: std.Io.net.Stream) !void {
 
                     try writer_guard.data_ptr.*.writeAll(packet.as_bytes_ptr());
 
-                    std.log.debug("Full pubkey sent", .{});
+                    std.log.info("Full pubkey sent", .{});
                 }
             },
             .Pubkey, .ReceiveCreateGame, .ReceiveGamePacket => {
@@ -148,26 +149,28 @@ pub fn handle_conn(io: std.Io, conn: std.Io.net.Stream) !void {
 pub fn perform_handshake(reader: *std.Io.Reader, writer: *std.Io.Writer, pubkey: *crypto.RawPubkey, random: std.Random) !void {
     try reader.readSliceAll(pubkey.as_bytes_mut());
 
-    std.log.debug("Got pubkey", .{});
+    std.log.info("Got pubkey", .{});
 
     var challenge: [32]u8 = undefined;
     random.bytes(&challenge);
 
     try writer.writeAll(&challenge);
 
-    std.log.debug("Challenge sent", .{});
+    std.log.info("Challenge sent", .{});
 
     var received_sig: [crypto.MLDSA87.Signature.encoded_length]u8 = undefined;
 
     try reader.readSliceAll(&received_sig);
 
-    std.log.debug("Signature received", .{});
+    std.log.info("Signature received", .{});
 
     const received_parsed_sig = try crypto.MLDSA87.Signature.fromBytes(received_sig);
     const parsed_pubkey = try crypto.MLDSA87.PublicKey.fromBytes(pubkey.mldsa);
 
     //TODO send a clear error to the user
     try received_parsed_sig.verify(&challenge, parsed_pubkey);
+
+    try writer.writeByte(Status.success.toByte());
 }
 
 pub fn write_to_user(io: std.Io, target_hash: [32]u8, data: *const packet_mod.Packet) !void {
