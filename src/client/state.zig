@@ -282,7 +282,7 @@ fn handle_played_card(self: *Self, card: Card, chosen_color: ?Card.CardColor, is
             is_my_turn.* = !is_my_turn.*;
         },
         .DrawTwo => {
-            is_my_turn.* = !is_my_turn.*;
+            defer is_my_turn.* = !is_my_turn.*;
 
             if (is_my_turn.*) {
                 try self.generate_other_cards(2, io, reader, writer);
@@ -291,7 +291,7 @@ fn handle_played_card(self: *Self, card: Card, chosen_color: ?Card.CardColor, is
             }
         },
         .WildDrawFour => {
-            is_my_turn.* = !is_my_turn.*;
+            defer is_my_turn.* = !is_my_turn.*;
 
             if (is_my_turn.*) {
                 try self.generate_other_cards(4, io, reader, writer);
