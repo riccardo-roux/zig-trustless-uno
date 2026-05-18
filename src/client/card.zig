@@ -218,27 +218,27 @@ pub const Card = union(enum) {
                 switch (number_data.number) {
                     inline else => |number| {
                         const number_str = std.fmt.comptimePrint("{d}", .{number});
-                        return ansi.withColor(number_str, number_data.color.to_ansi());
+                        return ansi.with_color_comptime(number_str, number_data.color.to_ansi());
                     },
                 }
             },
             .Skip => |skip_data| {
-                return ansi.withColor("skip", skip_data.to_ansi());
+                return ansi.with_color_comptime("skip", skip_data.to_ansi());
             },
             .Reverse => |rev| {
-                return ansi.withColor("reverse", rev.to_ansi());
+                return ansi.with_color_comptime("reverse", rev.to_ansi());
             },
             .DrawTwo => |draw_two| {
-                return ansi.withColor("+2", draw_two.to_ansi());
+                return ansi.with_color_comptime("+2", draw_two.to_ansi());
             },
             .Wild => |wild| {
                 if (wild) |wild_color| {
-                    return ansi.withColor("wild", wild_color.to_ansi());
+                    return ansi.with_color_comptime("wild", wild_color.to_ansi());
                 } else return "wild";
             },
             .WildDrawFour => |wild_four| {
                 if (wild_four) |wild_color| {
-                    return ansi.withColor("wild +4", wild_color.to_ansi());
+                    return ansi.with_color_comptime("wild +4", wild_color.to_ansi());
                 } else return "wild +4";
             },
         }

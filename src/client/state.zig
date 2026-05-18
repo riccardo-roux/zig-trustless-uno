@@ -19,6 +19,7 @@ const Card = @import("card.zig").Card;
 const deck_mod = @import("deck.zig");
 const random = @import("random.zig");
 const constants = @import("constants.zig");
+const ansi = @import("ansi.zig");
 
 const CardWithValueToReveal = struct {
     card: Card,
@@ -245,13 +246,18 @@ pub fn print_hands(self: Self, display_playable: bool) !usize {
     for (self.my_hand.items, 0..) |my_card, i| {
         const is_card_playable = my_card.card.is_playable(self.last_card_played);
 
-        if (is_card_playable) playable_count += 1;
-
         if (display_playable) {
-            std.debug.print("{d}. {s} ({s}playable)\n", .{ i, my_card.card.to_ansi_string(), if (is_card_playable) "" else "not " });
+            if (is_card_playable) {
+                playable_count += 1;
+                ansi.with_color_to_stderr("{d}. ", .{i}, .green);
+            } else {
+                ansi.with_color_to_stderr("{d}. ", .{i}, .red);
+            }
         } else {
-            std.debug.print("{d}. {s}\n", .{ i, my_card.card.to_ansi_string() });
+            std.debug.print("{d}. ", .{i});
         }
+
+        std.debug.print("{s}\n", .{my_card.card.to_ansi_string()});
     }
     std.debug.print("\nNumber of cards of the other player : {d}\n\n", .{self.other_hand.count()});
 

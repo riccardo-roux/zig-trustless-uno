@@ -16,8 +16,14 @@ pub const Color = enum(u8) {
     }
 };
 
-pub fn withColor(comptime text: []const u8, color: Color) []const u8 {
+pub fn with_color_comptime(comptime text: []const u8, color: Color) []const u8 {
     switch (color) {
         inline else => |comptime_color| return std.fmt.comptimePrint("\x1b[0;{s}m{s}\x1b[0m", .{ comptime comptime_color.to_rgb_string(), text }),
     }
+}
+
+pub fn with_color_to_stderr(comptime fmt: []const u8, args: anytype, color: Color) void {
+    std.debug.print("\x1b[0;{s}m", .{color.to_rgb_string()});
+    std.debug.print(fmt, args);
+    std.debug.print("\x1b[0m", .{});
 }
