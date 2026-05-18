@@ -118,7 +118,7 @@ pub fn handle_client_to_client_handshake(
 
                         const random_key = try decrypted.verify_signature_and_get_content(&parsed_full_pubkey.mldsa, full_pubkey.hash());
 
-                        std.debug.print("received random key = {s}\n", .{std.fmt.bytesToHex(&random_key, .lower)});
+                        std.debug.print("received random key\n", .{});
 
                         const state = State{
                             .allocator = allocator,

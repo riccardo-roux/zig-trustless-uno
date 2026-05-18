@@ -22,6 +22,7 @@ pub fn main(init: std.process.Init) !void {
     var conn_reader = server_conn.reader(init.io, &reader_buffer);
 
     var state = try cli.handle_client_to_client_handshake(init.io, &conn_writer.interface, &conn_reader.interface, &known_decrypted_nonces, init.gpa);
+    defer state.deinit();
 
     try state.generate_first_card(init.io, &conn_reader.interface, &conn_writer.interface);
 
@@ -45,7 +46,7 @@ pub fn main(init: std.process.Init) !void {
             break;
         }
 
-        var playable_count = try state.print_hands();
+        var playable_count = try state.print_hands(is_my_turn);
 
         if (is_my_turn) {
             std.log.info("Your turn.", .{});
@@ -53,7 +54,7 @@ pub fn main(init: std.process.Init) !void {
             if (playable_count == 0) {
                 try state.handle_cannot_play(init.io, &conn_reader.interface, &conn_writer.interface, true);
 
-                playable_count = try state.print_hands();
+                playable_count = try state.print_hands(true);
 
                 if (playable_count == 0) {
                     try state.handle_cannot_play(init.io, &conn_reader.interface, &conn_writer.interface, false);

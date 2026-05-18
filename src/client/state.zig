@@ -238,27 +238,24 @@ pub fn generate_game_start_cards(self: *Self, io: std.Io, reader: *std.Io.Reader
 }
 
 ///Returns the number of cards playable
-pub fn print_hands(self: Self) !usize {
+pub fn print_hands(self: Self, display_playable: bool) !usize {
     var playable_count: usize = 0;
 
     std.debug.print("Your hand :\n", .{});
     for (self.my_hand.items, 0..) |my_card, i| {
-        const card_json = try std.json.Stringify.valueAlloc(self.allocator, my_card.card, .{});
-        defer self.allocator.free(card_json);
-
         const is_card_playable = my_card.card.is_playable(self.last_card_played);
 
         if (is_card_playable) playable_count += 1;
 
-        std.debug.print("{d}. {s} ({s}playable)\n", .{ i, card_json, if (is_card_playable) "" else "not " });
+        if (display_playable) {
+            std.debug.print("{d}. {s} ({s}playable)\n", .{ i, my_card.card.to_ansi_string(), if (is_card_playable) "" else "not " });
+        } else {
+            std.debug.print("{d}. {s}\n", .{ i, my_card.card.to_ansi_string() });
+        }
     }
     std.debug.print("\nNumber of cards of the other player : {d}\n\n", .{self.other_hand.count()});
 
-    {
-        const card_json = try std.json.Stringify.valueAlloc(self.allocator, self.last_card_played, .{});
-        defer self.allocator.free(card_json);
-        std.debug.print("Last card played :\n{s}\n\n", .{card_json});
-    }
+    std.debug.print("Last card played :\n{s}\n\n", .{self.last_card_played.to_ansi_string()});
 
     return playable_count;
 }
@@ -365,4 +362,10 @@ pub fn play_card(self: *Self, is_my_turn: *bool, card_index: usize, io: std.Io, 
     try self.handle_played_card(card.card, chosen_color, is_my_turn, io, reader, writer);
 
     _ = self.my_hand.swapRemove(card_index);
+}
+
+pub fn deinit(self: *Self) void {
+    self.known_nonces.deinit();
+    self.my_hand.deinit(self.allocator);
+    self.other_hand.deinit();
 }
